@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "lymstore"
-  }
+    "default": "lymstore",
+    "lymstores": "lymstore"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
 }

@@ -9,6 +9,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     />
     <style>
+      /* Your CSS styles here */
       @font-face {
         font-family: Chap;
         src: url(./Chap-Regular.ttf);
@@ -243,6 +244,18 @@ td {
 
             var formDataString = keyValuePairs.join("&");
 
+            // Get the current date for datePlaced
+            var datePlaced = new Date().toLocaleDateString("en-US", {
+              weekday: "short",
+              year: "numeric",
+              month: "numeric",
+              day: "numeric",
+            });
+
+            // Add datePlaced and status to the form data string
+            formDataString += "&datePlaced=" + encodeURIComponent(datePlaced);
+            formDataString += "&status=unpaid"; // Default status
+
             // Send a POST request to your Google Apps Script
             fetch(
               "https://script.google.com/macros/s/AKfycbyA-cOocgcUqer9Nb1qswdhnPGyRzelGA2qBJeFjsQtlQGZL0fWPVl49TW98xxf30h9/exec",
@@ -277,12 +290,6 @@ td {
                 var debtor = formData.get("debtor");
                 var amount = formData.get("amount");
                 var itemsLoaned = formData.get("items loaned");
-                var datePlaced = new Date().toLocaleDateString("en-US", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "numeric",
-                  day: "numeric",
-                });
 
                 var entry = {
                   id: Date.now().toString(), // Assign unique ID for the new entry
@@ -386,10 +393,37 @@ td {
       }
 
       function markAsPaid(entry, row) {
-        entry.status = "paid";
-        updateEntryInLocalStorage(entry);
-        row.remove();
-      }
+  // Update the status locally first
+  entry.status = 'paid';
+  updateEntryInLocalStorage(entry);
+  row.remove();
+
+  // Send a request to the Google Apps Script to update the status in Google Sheets
+  var data = new URLSearchParams();
+  data.append('action', 'markAsPaid');
+  data.append('debtor', entry.debtor);
+  data.append('datePlaced', entry.datePlaced);
+
+  fetch('https://script.google.com/macros/s/AKfycbyA-cOocgcUqer9Nb1qswdhnPGyRzelGA2qBJeFjsQtlQGZL0fWPVl49TW98xxf30h9/exec', {
+    method: 'POST',
+    body: data.toString(),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.status === 'success') {
+      console.log('Status updated to paid successfully in Google Sheets.');
+    } else {
+      console.error('Failed to update status in Google Sheets:', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
+
 
       function editEntry(entry, row) {
         var newAmount = prompt("Edit Amount:", entry.amount);
@@ -446,17 +480,6 @@ td {
           }
         });
       }
-
-      // Example usage: Adding a new entry
-      var exampleEntry = {
-        id: Date.now().toString(), // Assign unique ID for the example entry
-        datePlaced: "2024-07-07",
-        debtor: "John Doe",
-        amount: "100.00",
-        itemsLoaned: "Book, Laptop",
-      };
-
-      addEntryToTable(exampleEntry);
     </script>
   </body>
 </html>
