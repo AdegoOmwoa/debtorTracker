@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ME Debts</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <style>
+      @font-face {
+        font-family: Chap;
+        src: url(./Chap-Regular.ttf);
+      }
+      body {
+        font-family: Chap;
+        background-color: #f8f9fa;
+        color: #343a40;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 20px auto;
+      }
+
+      .form-container {
+        margin-bottom: 30px;
+      }
+
+      .form {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .form input {
+        padding: 10px;
+        margin: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        flex: 1;
+        max-width: 200px;
+      }
+
+      .button {
+        margin: 5px 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+        transition: background-color 0.3s ease;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .button:hover {
+        background-color: #0056b3;
+      }
+
+      #message {
+        display: none;
+        margin: 20px;
+        font-weight: bold;
+        color: green;
+        padding: 8px;
+        background-color: beige;
+        border-radius: 4px;
+        border-color: aquamarine;
+        text-align: center;
+      }
+
+      table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+  overflow: hidden; /* Ensure content doesn't overflow */
+  text-overflow: ellipsis; /* Add ellipsis (...) for overflowing text */
+  white-space: nowrap; /* Prevent line breaks */
+}
+
+.items-loaned {
+  max-width: 200px; /* Adjust this width as needed */
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+  .items-loaned {
+    max-width: 150px; /* Adjust for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .items-loaned {
+    max-width: 120px; /* Adjust for very small screens */
+  }
+}
+
+      .actions button {
+        margin-right: 5px;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      .actions .map-button {
+        background-color: #f2f2f2;
+      }
+
+      .actions .edit-button {
+        background-color: #f2f2f2;
+      }
+      @media (max-width: 480px) {
+        .form {
+          flex-direction: column;
+        }
+
+        .form input,
+        .button {
+          width: 100%;
+        }
+
+        .form input {
+          margin-bottom: 10px;
+        }
+
+        th, td {
+          font-size: 14px;
+          padding: 8px;
+        }
+
+        .actions button {
+          padding: 4px 8px;
+        }
+
+        #message {
+          font-size: 14px;
+          padding: 6px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container form-container">
+      <form id="form" method="POST" class="form">
+        <input
+          class="input"
+          type="text"
+          placeholder="Debtor Name"
+          name="debtor"
+          required
+        />
+        <input
+          class="input"
+          type="number"
+          placeholder="Amount in shillings"
+          name="amount"
+          required
+        />
+        <input
+          class="input"
+          type="text"
+          placeholder="Items loaned"
+          name="items loaned"
+          required
+        />
+        <button class="button" type="submit" id="submit-button">
+          <i class="fas fa-plus"></i>
+        </button>
+      </form>
+    </div>
+
+    <div class="container">
+      <!-- Search input field -->
+      <input
+        type="text"
+        id="search-input"
+        placeholder="Search..."
+        style="
+          width: 100%;
+          padding: 10px;
+          margin-bottom: 20px;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+        "
+      />
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date Placed</th>
+            <th>Debtor</th>
+            <th>Amount</th>
+            <th>Items Loaned</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="data-table-body">
+          <!-- Entries will be dynamically inserted here -->
+        </tbody>
+      </table>
+    </div>
+
+    <div id="message"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        loadEntriesFromLocalStorage();
+
+        document
+          .getElementById("form")
+          .addEventListener("submit", function (e) {
+            e.preventDefault(); // Prevent the default form submission
+            document.getElementById("message").textContent = "Submitting..";
+            document.getElementById("message").style.display = "block";
+            document.getElementById("submit-button").disabled = true;
+
+            // Collect the form data
+            var formData = new FormData(this);
+            var keyValuePairs = [];
+            for (var pair of formData.entries()) {
+              keyValuePairs.push(pair[0] + "=" + pair[1]);
+            }
+
+            var formDataString = keyValuePairs.join("&");
+
+            // Send a POST request to your Google Apps Script
+            fetch(
+              "https://script.google.com/macros/s/AKfycbyA-cOocgcUqer9Nb1qswdhnPGyRzelGA2qBJeFjsQtlQGZL0fWPVl49TW98xxf30h9/exec",
+              {
+                redirect: "follow",
+                method: "POST",
+                body: formDataString,
+                headers: {
+                  "Content-Type": "text/plain;charset=utf-8",
+                },
+              }
+            )
+              .then(function (response) {
+                // Check if the request was successful
+                if (response) {
+                  return response; // Assuming your script returns JSON response
+                } else {
+                  throw new Error("Failed to submit the form.");
+                }
+              })
+              .then(function (data) {
+                // Display a success message
+                document.getElementById("message").textContent =
+                  "Data submitted successfully!";
+                document.getElementById("message").style.display = "block";
+                document.getElementById("message").style.backgroundColor =
+                  "green";
+                document.getElementById("message").style.color = "beige";
+                document.getElementById("submit-button").disabled = false;
+
+                // Add the submitted data to the table
+                var debtor = formData.get("debtor");
+                var amount = formData.get("amount");
+                var itemsLoaned = formData.get("items loaned");
+                var datePlaced = new Date().toLocaleDateString("en-US", {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "numeric",
+                  day: "numeric",
+                });
+
+                var entry = {
+                  id: Date.now().toString(), // Assign unique ID for the new entry
+                  datePlaced: datePlaced,
+                  debtor: debtor,
+                  amount: amount,
+                  itemsLoaned: itemsLoaned,
+                  status: "unpaid", // Default status
+                };
+
+                saveEntryToLocalStorage(entry);
+                addEntryToTable(entry);
+
+                // Reset the form
+                document.getElementById("form").reset();
+
+                setTimeout(function () {
+                  document.getElementById("message").textContent = "";
+                  document.getElementById("message").style.display = "none";
+                }, 2600);
+              })
+              .catch(function (error) {
+                // Handle errors, you can display an error message here
+                console.error(error);
+                document.getElementById("message").textContent =
+                  "An error occurred while submitting the form.";
+                document.getElementById("message").style.display = "block";
+                document.getElementById("message").style.backgroundColor =
+                  "red";
+                document.getElementById("message").style.color = "white";
+                document.getElementById("submit-button").disabled = false;
+              });
+          });
+
+        // Search functionality
+        document
+          .getElementById("search-input")
+          .addEventListener("input", function () {
+            var query = this.value.toLowerCase();
+            filterTable(query);
+          });
+      });
+
+      function loadEntriesFromLocalStorage() {
+        var entries;
+        try {
+          entries = JSON.parse(localStorage.getItem("entries")) || [];
+          if (!Array.isArray(entries)) throw new Error("Invalid data");
+        } catch (e) {
+          entries = [];
+        }
+
+        // Clear the table body before adding new rows
+        document.getElementById("data-table-body").innerHTML = "";
+
+        entries.forEach(function (entry) {
+          if (entry.status === "unpaid") {
+            addEntryToTable(entry);
+          }
+        });
+      }
+
+      function saveEntryToLocalStorage(entry) {
+        var entries;
+        try {
+          entries = JSON.parse(localStorage.getItem("entries")) || [];
+          if (!Array.isArray(entries)) throw new Error("Invalid data");
+        } catch (e) {
+          entries = [];
+        }
+        entries.push(entry);
+        localStorage.setItem("entries", JSON.stringify(entries));
+      }
+
+      function addEntryToTable(entry) {
+        var newRow = document.createElement("tr");
+        newRow.innerHTML = `
+          <td>${entry.datePlaced}</td>
+          <td>${entry.debtor}</td>
+          <td class="amount">${entry.amount}</td>
+          <td class="items-loaned">${entry.itemsLoaned}</td>
+          <td class="actions">
+            <button class="map-button">MAP</button>
+            <button class="edit-button">Edit</button>
+          </td>
+        `;
+
+        newRow
+          .querySelector(".map-button")
+          .addEventListener("click", function () {
+            markAsPaid(entry, newRow);
+          });
+
+        newRow
+          .querySelector(".edit-button")
+          .addEventListener("click", function () {
+            editEntry(entry, newRow);
+          });
+
+        document.getElementById("data-table-body").appendChild(newRow);
+      }
+
+      function markAsPaid(entry, row) {
+        entry.status = "paid";
+        updateEntryInLocalStorage(entry);
+        row.remove();
+      }
+
+      function editEntry(entry, row) {
+        var newAmount = prompt("Edit Amount:", entry.amount);
+        var newItemsLoaned = prompt("Edit Items Loaned:", entry.itemsLoaned);
+
+        if (newAmount !== null && newItemsLoaned !== null) {
+          entry.amount = newAmount;
+          entry.itemsLoaned = newItemsLoaned;
+
+          // Update the table
+          row.querySelector(".amount").textContent = newAmount;
+          row.querySelector(".items-loaned").textContent = newItemsLoaned;
+
+          // Update the entry in local storage
+          updateEntryInLocalStorage(entry);
+        }
+      }
+
+      function updateEntryInLocalStorage(updatedEntry) {
+        var entries;
+        try {
+          entries = JSON.parse(localStorage.getItem("entries")) || [];
+          if (!Array.isArray(entries)) throw new Error("Invalid data");
+        } catch (e) {
+          entries = [];
+        }
+
+        // Find the entry by its unique id
+        var index = entries.findIndex((entry) => entry.id === updatedEntry.id);
+
+        if (index !== -1) {
+          entries[index] = updatedEntry; // Update existing entry
+        } else {
+          entries.push(updatedEntry); // Add new entry if not found
+        }
+
+        localStorage.setItem("entries", JSON.stringify(entries));
+      }
+
+      function filterTable(query) {
+        var tableBody = document.getElementById("data-table-body");
+        var rows = tableBody.getElementsByTagName("tr");
+
+        Array.from(rows).forEach(function (row) {
+          var cells = row.getElementsByTagName("td");
+          var match = Array.from(cells).some(function (cell) {
+            return cell.textContent.toLowerCase().includes(query);
+          });
+
+          if (match) {
+            row.style.display = "";
+          } else {
+            row.style.display = "none";
+          }
+        });
+      }
+
+      // Example usage: Adding a new entry
+      var exampleEntry = {
+        id: Date.now().toString(), // Assign unique ID for the example entry
+        datePlaced: "2024-07-07",
+        debtor: "John Doe",
+        amount: "100.00",
+        itemsLoaned: "Book, Laptop",
+      };
+
+      addEntryToTable(exampleEntry);
+    </script>
+  </body>
+</html>
