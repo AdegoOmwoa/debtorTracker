@@ -424,23 +424,60 @@ td {
   });
 }
 
+function editEntry(entry, row) {
+  var newAmount = prompt("Edit Amount:", entry.amount);
+  var newItemsLoaned = prompt("Edit Items Loaned:", entry.itemsLoaned);
 
-      function editEntry(entry, row) {
-        var newAmount = prompt("Edit Amount:", entry.amount);
-        var newItemsLoaned = prompt("Edit Items Loaned:", entry.itemsLoaned);
+  if (newAmount !== null && newItemsLoaned !== null) {
+    entry.amount = newAmount;
+    entry.itemsLoaned = newItemsLoaned;
 
-        if (newAmount !== null && newItemsLoaned !== null) {
-          entry.amount = newAmount;
-          entry.itemsLoaned = newItemsLoaned;
+    // Update the table
+    row.querySelector(".amount").textContent = newAmount;
+    row.querySelector(".items-loaned").textContent = newItemsLoaned;
 
-          // Update the table
-          row.querySelector(".amount").textContent = newAmount;
-          row.querySelector(".items-loaned").textContent = newItemsLoaned;
+    // Update the entry in local storage
+    updateEntryInLocalStorage(entry);
 
-          // Update the entry in local storage
-          updateEntryInLocalStorage(entry);
+    // Send a request to the Google Apps Script to update the entry in Google Sheets
+    var data = new URLSearchParams();
+    data.append('action', 'editEntry');
+    data.append('debtor', entry.debtor);
+    data.append('datePlaced', entry.datePlaced);
+    data.append('amount', newAmount);
+    data.append('itemsLoaned', newItemsLoaned);
+
+    fetch('https://script.google.com/macros/s/AKfycbyA-cOocgcUqer9Nb1qswdhnPGyRzelGA2qBJeFjsQtlQGZL0fWPVl49TW98xxf30h9/exec', {
+      method: 'POST',
+      body: data.toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
+    .then(response => response.text()) // Read the response as plain text
+    .then(text => {
+      console.log('Raw response:', text); // Log the raw response to debug
+
+      // Check if the response is in JSON format
+      try {
+        const data = JSON.stringify(text); // Parse it as JSON
+        if (data.status === 'success') {
+          console.log('Entry updated successfully in Google Sheets.');
+        } else {
+          console.error('Failed to update entry in Google Sheets:', data.message);
         }
+      } catch (error) {
+        // Handle cases where the response is not JSON
+        console.error('Error parsing response as JSON:', error, text);
+        console.error('Response might not be in JSON format.');
       }
+    })
+    .catch(error => {
+      console.error('Fetch error:', error);
+    });
+  }
+}
+
 
       function updateEntryInLocalStorage(updatedEntry) {
         var entries;
